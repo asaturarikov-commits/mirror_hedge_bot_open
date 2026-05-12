@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-🚀 Simple Mirror Hedge Bot v8.1 (P&L с типом + баланс USDT)
+🚀 Simple Mirror Hedge Bot v8.1 (P&L + баланс USDT)
 """
 import requests, time, hashlib, hmac, json, os, uuid, logging
 from urllib.parse import urlencode
@@ -15,7 +15,7 @@ AUTO_TRADE = True
 STATE_FILE = "active_bundles.json"
 CHECK_INTERVAL = 60
 LOT = 0.2
-PROFIT_PERCENT = 15
+PROFIT_PERCENT = 15  # <--- ИЗМЕНЕНО НА 15%
 TARGET_OTM = 400
 OTM_TOLERANCE = 50
 EXP_DAYS_MIN = 21
@@ -100,8 +100,7 @@ def parse_option(symbol: str) -> Optional[Dict]:
         opt_type = "Put" if parts[3] == "P" else "Call"
         exp = datetime.strptime(parts[1], "%d%b%y")
         if exp.year < 2000: exp = exp.replace(year=exp.year + 100)
-        return {"symbol": symbol, "symbol_clean": clean, "strike": strike, "type": opt_type,
-                "days_to_exp": (exp - datetime.now()).days}
+        return {"symbol": symbol, "strike": strike, "type": opt_type, "days_to_exp": (exp - datetime.now()).days}
     except Exception as e:
         log(f"Parse error for {symbol}: {e}", "ERROR")
         return None
@@ -127,8 +126,7 @@ def calc_profit(entry: float, current: float) -> float:
 
 def place_option_order(symbol: str, side: str, qty: float) -> Dict:
     order_link_id = f"opt-{uuid.uuid4().hex[:12]}"
-    body = {"category": "option", "symbol": symbol, "side": side, "orderType": "Market",
-            "qty": str(qty), "orderLinkId": order_link_id}
+    body = {"category": "option", "symbol": symbol, "side": side, "orderType": "Market", "qty": str(qty), "orderLinkId": order_link_id}
     log(f"📤 Ордер опцион: {symbol} | {side} {qty} @ Market", "TRADE")
     return send_request("POST", "/v5/order/create", body=body)
 
@@ -167,9 +165,7 @@ def cancel_hedge_orders(hedge_ids: List[str]):
     log(f"🗑️ Отмена {len(hedge_ids)} хеджей по ID...", "SYS")
     count = 0
     for link_id in hedge_ids:
-        res = send_request("POST", "/v5/order/cancel", body={
-            "category": "linear", "symbol": "ETHUSDT", "orderLinkId": link_id
-        })
+        res = send_request("POST", "/v5/order/cancel", body={"category": "linear", "symbol": "ETHUSDT", "orderLinkId": link_id})
         if res.get("retCode") == 0:
             count += 1
     log(f"✅ Отменено {count}/{len(hedge_ids)} хеджей", "SUCCESS")
@@ -178,33 +174,26 @@ def open_new_bundle(setup: Dict) -> Optional[Dict]:
     log(f"🎯 Открываем связку: {setup['symbol']} LOT={LOT}", "TRADE")
     if not AUTO_TRADE:
         log(f"🧪 [ТЕСТ] Продали бы {LOT} шт.", "INFO")
-        return {"symbol": setup["symbol"], "symbol_clean": setup["symbol_clean"], "strike": setup["strike"],
-                "type": setup["type"], "qty": LOT, "entry_price": 0, "entry_time": datetime.now().isoformat(), "hedge_ids": []}
+        return {"symbol": setup["symbol"], "strike": setup["strike"], "type": setup["type"], "qty": LOT, "entry_price": 0, "entry_time": datetime.now().isoformat(), "hedge_ids": []}
     res = place_option_order(setup["symbol"], "Sell", LOT)
-    if res.get("retCode") != 0:
-        return None
+    if res.get("retCode") != 0: return None
     time.sleep(2)
     entry_price = get_option_price(setup["symbol"]) or 0
     log(f"✅ Вход @ {entry_price}", "SUCCESS")
     hedge_ids = create_hedge_orders(setup)
-    return {"symbol": setup["symbol"], "symbol_clean": setup["symbol_clean"], "strike": setup["strike"],
-            "type": setup["type"], "qty": LOT, "entry_price": entry_price, "entry_time": datetime.now().isoformat(),
-            "hedge_ids": hedge_ids}
+    return {"symbol": setup["symbol"], "strike": setup["strike"], "type": setup["type"], "qty": LOT, "entry_price": entry_price, "entry_time": datetime.now().isoformat(), "hedge_ids": hedge_ids}
 
 def close_bundle(bundle: Dict):
-    log(f"🔒 Закрываем связку: {bundle['symbol']}", "TRADE")
-    if not AUTO_TRADE:
-        return log(f"🧪 [ТЕСТ] Закрыли бы", "INFO")
+    log(f" Закрываем связку: {bundle['symbol']}", "TRADE")
+    if not AUTO_TRADE: return log(f"🧪 [ТЕСТ] Закрыли бы", "INFO")
     place_option_order(bundle["symbol"], "Buy", bundle["qty"])
     time.sleep(2)
-    if bundle.get("hedge_ids"):
-        cancel_hedge_orders(bundle["hedge_ids"])
+    if bundle.get("hedge_ids"): cancel_hedge_orders(bundle["hedge_ids"])
     log("✅ Связка закрыта + её хеджи отменены", "SUCCESS")
 
 def check_profit_exit(bundle: Dict) -> bool:
     cur = get_option_price(bundle["symbol"])
-    if not cur or not bundle.get("entry_price"):
-        return False
+    if not cur or not bundle.get("entry_price"): return False
     pnl = calc_profit(bundle["entry_price"], cur)
     opt_type = bundle["type"].upper()
     log(f"📊 P&L {opt_type}: {pnl}%")
@@ -224,8 +213,8 @@ def save_state(state: Dict):
 
 # ====================== ЗАПУСК ======================
 def main():
-    # ✅ ИСПРАВЛЕНО: \n вместо реальных переносов строк
-    header = "\n" + "═" * 50 + f"\n🚀 Simple Mirror Hedge Bot v8.1 (P&L + баланс)\n" + "═" * 50
+    # ✅ КРИТИЧЕСКИ ВАЖНО: \n вместо реальных переносов строк
+    header = "\n" + "═" * 50 + f"\n Simple Mirror Hedge Bot v8.1 (P&L + баланс)\n" + "═" * 50
     print(header)
     log(f"Лот: {LOT} | Прибыль: {PROFIT_PERCENT}% | AUTO_TRADE: {AUTO_TRADE}", "SYS")
     ensure_hedge_mode()
@@ -249,8 +238,6 @@ def main():
                         if nb:
                             state[side] = nb
                             save_state(state)
-                        else:
-                            log(f"⚠️ Ошибка открытия {side.upper()} связки", "WARN")
                 else:
                     if check_profit_exit(bundle):
                         close_bundle(bundle)
