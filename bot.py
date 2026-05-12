@@ -15,7 +15,7 @@ AUTO_TRADE = True
 STATE_FILE = "active_bundles.json"
 CHECK_INTERVAL = 60
 LOT = 0.2
-PROFIT_PERCENT = 15  # <--- ИЗМЕНЕНО НА 15%
+PROFIT_PERCENT = 15  # ✅ ИЗМЕНЕНО НА 15%
 TARGET_OTM = 400
 OTM_TOLERANCE = 50
 EXP_DAYS_MIN = 21
@@ -184,11 +184,12 @@ def open_new_bundle(setup: Dict) -> Optional[Dict]:
     return {"symbol": setup["symbol"], "strike": setup["strike"], "type": setup["type"], "qty": LOT, "entry_price": entry_price, "entry_time": datetime.now().isoformat(), "hedge_ids": hedge_ids}
 
 def close_bundle(bundle: Dict):
-    log(f" Закрываем связку: {bundle['symbol']}", "TRADE")
+    log(f"🔒 Закрываем связку: {bundle['symbol']}", "TRADE")
     if not AUTO_TRADE: return log(f"🧪 [ТЕСТ] Закрыли бы", "INFO")
     place_option_order(bundle["symbol"], "Buy", bundle["qty"])
     time.sleep(2)
-    if bundle.get("hedge_ids"): cancel_hedge_orders(bundle["hedge_ids"])
+    if bundle.get("hedge_ids"):
+        cancel_hedge_orders(bundle["hedge_ids"])
     log("✅ Связка закрыта + её хеджи отменены", "SUCCESS")
 
 def check_profit_exit(bundle: Dict) -> bool:
@@ -214,7 +215,7 @@ def save_state(state: Dict):
 # ====================== ЗАПУСК ======================
 def main():
     # ✅ КРИТИЧЕСКИ ВАЖНО: \n вместо реальных переносов строк
-    header = "\n" + "═" * 50 + f"\n Simple Mirror Hedge Bot v8.1 (P&L + баланс)\n" + "═" * 50
+    header = "\n" + "═" * 50 + f"\n🚀 Simple Mirror Hedge Bot v8.1 (P&L + баланс)\n" + "═" * 50
     print(header)
     log(f"Лот: {LOT} | Прибыль: {PROFIT_PERCENT}% | AUTO_TRADE: {AUTO_TRADE}", "SYS")
     ensure_hedge_mode()
